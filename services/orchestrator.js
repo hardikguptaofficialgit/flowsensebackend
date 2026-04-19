@@ -49,10 +49,10 @@ function parseJsonResponse(text) {
 
 export async function orchestrateInsights(simulation, issues, learning) {
   const availability = configuredProviders();
-  const chain = ["nvidia", "groq"].filter((provider) => availability[provider]);
+  const chain = ["nvidia", "groq", "openai", "perplexity"].filter((provider) => availability[provider]);
 
   if (!chain.length) {
-    throw new Error("No AI provider configured. Add NVIDIA_API_KEY or GROQ_API_KEY.");
+    throw new Error("No AI provider configured. Add at least one supported provider API key.");
   }
 
   const messages = makePrompt(simulation, issues, learning);

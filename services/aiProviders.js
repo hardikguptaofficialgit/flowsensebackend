@@ -110,6 +110,8 @@ export function configuredProviders() {
   return {
     nvidia: Boolean(process.env.NVIDIA_API_KEY),
     groq: Boolean(process.env.GROQ_API_KEY),
+    openai: Boolean(process.env.OPENAI_API_KEY),
+    perplexity: Boolean(process.env.PERPLEXITY_API_KEY),
   };
 }
 
