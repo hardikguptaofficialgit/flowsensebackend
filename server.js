@@ -1,39 +1,79 @@
-import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { analyzeUrl, compareUrls, configStatus, deploymentHook, prMergeHook } from "./routes/analyze.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import apiRouter from "./routes/api.js";
+import { refreshBrowserDiagnostics } from "./services/browserService.js";
+import { configuredProviders } from "./services/aiProviders.js";
 
 const app = express();
-const PORT = Number(process.env.PORT) || 8787;
+const PORT = Number(process.env.PORT || process.env.BACKEND_PORT) || 5000;
 
-app.use(cors());
-app.use(express.json({ limit: "1mb" }));
+function resolveAllowedOrigins() {
+  const fromEnv = String(process.env.CORS_ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
 
-app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok", service: "flowsense-agent", timestamp: new Date().toISOString() });
-});
+  if (fromEnv.length) return new Set(fromEnv);
 
-app.get("/api/config", configStatus);
-app.post("/api/analyze", analyzeUrl);
-app.post("/api/compare", compareUrls);
-app.post("/api/hooks/deployment", deploymentHook);
-app.post("/api/hooks/pr-merge", prMergeHook);
-
-const distPath = path.resolve(__dirname, "..", "dist");
-app.use(express.static(distPath));
-app.get("*", (req, res, next) => {
-  if (req.path.startsWith("/api")) {
-    next();
-    return;
+  if (process.env.NODE_ENV !== "production") {
+    return new Set([
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+      "http://localhost:4173",
+      "http://127.0.0.1:4173",
+    ]);
   }
-  res.sendFile(path.join(distPath, "index.html"));
+
+  return new Set();
+}
+
+const allowedOrigins = resolveAllowedOrigins();
+
+app.use(
+  cors({
+    credentials: true,
+    origin(origin, callback) {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      if (allowedOrigins.has(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error("CORS origin is not allowed."));
+    },
+  })
+);
+
+app.use(
+  express.json({
+    limit: "1mb",
+    verify(req, _res, buf) {
+      req.rawBody = buf.toString("utf8");
+    },
+  })
+);
+
+app.use("/api", apiRouter);
+
+app.use((_req, res) => {
+  res.status(404).json({
+    error: "Not found.",
+    message: "This backend serves API routes only. Use /api/* endpoints.",
+  });
 });
 
 app.listen(PORT, () => {
   console.log(`FlowSense backend listening on http://localhost:${PORT}`);
+  console.log(`Enabled providers: ${JSON.stringify(configuredProviders())}`);
+  refreshBrowserDiagnostics()
+    .then((diagnostics) => {
+      console.log(`Browser automation: ${JSON.stringify(diagnostics)}`);
+    })
+    .catch((error) => {
+      console.error(`Browser diagnostics failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+    });
 });

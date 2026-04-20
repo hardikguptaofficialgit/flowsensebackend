@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const STORE_PATH = path.resolve(__dirname, "..", "data", "learning.json");
+let writeChain = Promise.resolve();
 
 async function readStore() {
   try {
@@ -16,7 +17,8 @@ async function readStore() {
 }
 
 async function writeStore(store) {
-  await fs.writeFile(STORE_PATH, JSON.stringify(store, null, 2), "utf8");
+  writeChain = writeChain.then(() => fs.writeFile(STORE_PATH, JSON.stringify(store, null, 2), "utf8"));
+  await writeChain;
 }
 
 export async function getLearningProfile(url) {

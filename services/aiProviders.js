@@ -1,3 +1,24 @@
+import dotenv from "dotenv";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.resolve(__dirname, "..", ".env"), override: false, quiet: true });
+
+const PROVIDER_TIMEOUT_MS = Math.max(3000, Number.parseInt(process.env.PROVIDER_TIMEOUT_MS || "12000", 10) || 12000);
+
+async function fetchWithTimeout(url, options, timeoutMs = PROVIDER_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 function extractContent(payload) {
   if (!payload) return null;
   if (typeof payload === "string") return payload;
@@ -14,33 +35,10 @@ function extractContent(payload) {
   return null;
 }
 
-async function callOpenAI(messages) {
-  if (!process.env.OPENAI_API_KEY) return null;
-
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
-      messages,
-      temperature: 0.2,
-    }),
-  });
-
-  if (!response.ok) return null;
-  return {
-    provider: "openai",
-    content: extractContent(await response.json()),
-  };
-}
-
 async function callGroq(messages) {
   if (!process.env.GROQ_API_KEY) return null;
 
-  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+  const response = await fetchWithTimeout("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -63,7 +61,7 @@ async function callGroq(messages) {
 async function callNvidia(messages) {
   if (!process.env.NVIDIA_API_KEY) return null;
 
-  const response = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
+  const response = await fetchWithTimeout("https://integrate.api.nvidia.com/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -83,42 +81,15 @@ async function callNvidia(messages) {
   };
 }
 
-async function callPerplexity(messages) {
-  if (!process.env.PERPLEXITY_API_KEY) return null;
-
-  const response = await fetch("https://api.perplexity.ai/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.PERPLEXITY_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: process.env.PERPLEXITY_MODEL || "sonar-pro",
-      messages,
-      temperature: 0.1,
-    }),
-  });
-
-  if (!response.ok) return null;
-  return {
-    provider: "perplexity",
-    content: extractContent(await response.json()),
-  };
-}
-
 export function configuredProviders() {
   return {
     nvidia: Boolean(process.env.NVIDIA_API_KEY),
     groq: Boolean(process.env.GROQ_API_KEY),
-    openai: Boolean(process.env.OPENAI_API_KEY),
-    perplexity: Boolean(process.env.PERPLEXITY_API_KEY),
   };
 }
 
 export async function callProvider(provider, messages) {
   if (provider === "nvidia") return callNvidia(messages);
   if (provider === "groq") return callGroq(messages);
-  if (provider === "openai") return callOpenAI(messages);
-  if (provider === "perplexity") return callPerplexity(messages);
   return null;
 }

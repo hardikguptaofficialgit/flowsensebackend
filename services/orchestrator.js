@@ -47,16 +47,33 @@ function parseJsonResponse(text) {
   }
 }
 
+function heuristicInsights(issues, attempted) {
+  const topIssues = issues.slice(0, 3);
+  return {
+    provider: "heuristic",
+    executiveSummary: topIssues.length
+      ? `Heuristic mode active. Prioritize ${topIssues.map((issue) => issue.title.toLowerCase()).join(", ")} for fastest UX improvement.`
+      : "Heuristic mode active. No critical friction was detected in this run.",
+    modelConfidence: 72,
+    actions: topIssues.map((issue, index) => ({
+      title: `Priority action ${index + 1}: ${issue.title}`,
+      whyItMatters: issue.impact || "Improves navigation clarity and conversion intent.",
+      implementationPrompt: issue.fixPrompt || "Provide concrete implementation guidance.",
+    })),
+    providerTrace: { attempted, used: "heuristic" },
+  };
+}
+
 export async function orchestrateInsights(simulation, issues, learning) {
   const availability = configuredProviders();
-  const chain = ["nvidia", "groq", "openai", "perplexity"].filter((provider) => availability[provider]);
-
-  if (!chain.length) {
-    throw new Error("No AI provider configured. Add at least one supported provider API key.");
-  }
+  const chain = ["nvidia", "groq"].filter((provider) => availability[provider]);
 
   const messages = makePrompt(simulation, issues, learning);
   const attempted = [];
+
+  if (!chain.length) {
+    return heuristicInsights(issues, attempted);
+  }
 
   for (const provider of chain) {
     attempted.push(provider);
@@ -84,5 +101,5 @@ export async function orchestrateInsights(simulation, issues, learning) {
     }
   }
 
-  throw new Error(`All configured AI providers failed. Attempted: ${attempted.join(", ")}`);
+  return heuristicInsights(issues, attempted);
 }
