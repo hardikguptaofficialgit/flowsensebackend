@@ -149,13 +149,13 @@ function buildFallbackProfile(url) {
 export function buildStages(url, screenCount, frictionPoints) {
   const host = new URL(url).hostname;
   return [
-    { label: "Launching agent...", detail: "Booting autonomous UX analyst runtime." },
-    { label: "Initializing session...", detail: `Preparing interaction context for ${host}.` },
-    { label: "Scanning homepage...", detail: "Detecting information hierarchy and first-impression signals." },
-    { label: "Identifying primary actions...", detail: "Mapping top CTA candidates and user intents." },
-    { label: "Navigating interaction paths...", detail: `Exploring ${screenCount} key screens for conversion journey continuity.` },
-    { label: "Evaluating usability signals...", detail: `Correlating ${frictionPoints} friction signals with UX heuristics.` },
-    { label: "Synthesizing report...", detail: "Generating prioritized recommendations for the product team." },
+    { label: "Launching browser...", detail: "Booting autonomous UX analyst runtime.", kind: "boot", state: "initializing" },
+    { label: "Opening session...", detail: `Preparing interaction context for ${host}.`, kind: "setup", state: "hydrating" },
+    { label: "Loading homepage...", detail: "Detecting information hierarchy and first-impression signals.", kind: "scan", state: "rendering" },
+    { label: "Inspecting primary paths...", detail: "Mapping top CTA candidates and user intents.", kind: "inspect", state: "hovering" },
+    { label: "Clicking through key screens...", detail: `Exploring ${screenCount} key screens for conversion journey continuity.`, kind: "navigate", state: "navigating" },
+    { label: "Measuring usability friction...", detail: `Correlating ${frictionPoints} friction signals with UX heuristics.`, kind: "evaluate", state: "scoring" },
+    { label: "Assembling final report...", detail: "Generating prioritized recommendations for the product team.", kind: "report", state: "done" },
   ];
 }
 

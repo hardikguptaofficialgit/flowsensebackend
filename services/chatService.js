@@ -82,6 +82,8 @@ export async function chatWithAgent({ agentId, message }) {
           provider,
           agentId: selectedAgent.id,
           answer: String(response.content).trim(),
+          attemptedProviders: chain,
+          fallbackUsed: false,
         };
       }
     } catch {
@@ -93,5 +95,7 @@ export async function chatWithAgent({ agentId, message }) {
     provider: "heuristic",
     agentId: selectedAgent.id,
     answer: heuristicReply(selectedAgent.id, message, providers),
+    attemptedProviders: chain,
+    fallbackUsed: true,
   };
 }

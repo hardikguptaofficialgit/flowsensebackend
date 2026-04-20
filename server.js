@@ -24,7 +24,10 @@ function resolveAllowedOrigins() {
     ]);
   }
 
-  return new Set();
+  return new Set([
+    "https://flow.linkitapp.in",
+    "https://www.flow.linkitapp.in",
+  ]);
 }
 
 const allowedOrigins = resolveAllowedOrigins();

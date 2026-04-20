@@ -1,9 +1,24 @@
 {
   "name": "flowsense-backend",
+  "version": "0.0.0",
   "private": true,
   "type": "module",
+  "description": "FlowSense backend API and automation services.",
+  "main": "server.js",
   "scripts": {
     "dev": "node server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "check": "node --check server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "firebase-admin": "^13.8.0",
+    "playwright": "^1.59.1",
+    "puppeteer": "^24.41.0"
   }
 }
