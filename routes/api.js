@@ -16,6 +16,7 @@ const router = Router();
 const authLimiter = createRateLimit({ windowMs: 15 * 60 * 1000, max: 12, keyFn: (req) => `auth:${req.path}:${req.socket.remoteAddress}` });
 const publicAnalyzeLimiter = createRateLimit({ windowMs: 5 * 60 * 1000, max: 30, keyFn: (req) => `analyze:${req.path}:${req.socket.remoteAddress}` });
 const webhookLimiter = createRateLimit({ windowMs: 60 * 1000, max: 20, keyFn: (req) => `webhook:${req.path}:${req.socket.remoteAddress}` });
+const chatLimiter = createRateLimit({ windowMs: 1 * 60 * 1000, max: 60, keyFn: (req) => `chat:${req.path}:${req.socket.remoteAddress}` });
 
 router.get("/health", (_req, res) => {
   res.json({ status: "ok", service: "flowsense-agent", timestamp: new Date().toISOString() });
@@ -38,7 +39,7 @@ router.put("/workspace/profile", requireAuth, upsertProfile);
 router.get("/workspace/analyses", requireAuth, listAnalyses);
 router.post("/workspace/analyses", requireAuth, saveAnalysis);
 
-router.get("/chat/agents", requireAuth, agentCatalog);
-router.post("/chat/message", requireAuth, chatMessage);
+router.get("/chat/agents", chatLimiter, agentCatalog);
+router.post("/chat/message", chatLimiter, chatMessage);
 
 export default router;
