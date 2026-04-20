@@ -66,7 +66,6 @@ async function callGroq(messages) {
     return null;
   }
 }
-}
 
 async function callNvidia(messages) {
   if (!process.env.NVIDIA_API_KEY) return null;

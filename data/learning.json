@@ -12,5 +12,12 @@
     "avgFriction": 2,
     "lastScore": 81,
     "lastAnalyzedAt": "2026-04-20T12:09:41.413Z"
+  },
+  "flowsenseai.vercel.app": {
+    "runCount": 1,
+    "avgScore": 81,
+    "avgFriction": 2,
+    "lastScore": 81,
+    "lastAnalyzedAt": "2026-04-20T13:26:27.403Z"
   }
 }

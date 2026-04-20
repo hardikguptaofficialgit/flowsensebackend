@@ -37,8 +37,15 @@ async function collectPageMetrics(page, url) {
     const links = Array.from(document.querySelectorAll("a[href]"));
     const buttons = Array.from(document.querySelectorAll("button, [role='button']"));
     const headings = Array.from(document.querySelectorAll("h1, h2, h3"));
+    const inputs = Array.from(document.querySelectorAll("input, textarea, select"));
+    const images = Array.from(document.querySelectorAll("img[src]"));
+    
+    // Real mobile responsiveness check
+    const hasResponsiveDesign = document.querySelector('meta[name="viewport"]') !== null;
+    const mediaQueries = window.matchMedia('(max-width: 768px)').matches;
+    const computedStyles = window.getComputedStyle(document.documentElement);
 
-    const ctaKeywords = ["start", "sign up", "book", "buy", "try", "get started", "request demo"];
+    const ctaKeywords = ["start", "sign up", "book", "buy", "try", "get started", "request demo", "contact", "join", "subscribe"];
     const hasStrongCTA = buttons.concat(links).some((node) => {
       const label = (node.textContent || "").trim().toLowerCase();
       return ctaKeywords.some((keyword) => label.includes(keyword));
@@ -46,7 +53,7 @@ async function collectPageMetrics(page, url) {
 
     const screenCandidates = links
       .map((link) => link.getAttribute("href") || "")
-      .filter(Boolean)
+      .filter(href => !href.startsWith("#") && href.length > 0)
       .slice(0, 8);
 
     return {
@@ -55,7 +62,11 @@ async function collectPageMetrics(page, url) {
       buttonCount: buttons.length,
       headingCount: headings.length,
       textLength: text.length,
+      inputCount: inputs.length,
+      imageCount: images.length,
       hasStrongCTA,
+      hasResponsiveDesign,
+      mediaQueriesActive: mediaQueries,
       screenCandidates,
     };
   });
@@ -82,12 +93,35 @@ async function collectPageMetrics(page, url) {
 }
 
 async function scanWithPlaywright(url) {
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({ 
+    headless: true,
+    args: ['--disable-blink-features=AutomationControlled']
+  });
   try {
-    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 12000 });
-    const metrics = await collectPageMetrics(page, url);
-    return { source: "playwright", ...metrics };
+    // Desktop scan
+    const desktopPage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    await desktopPage.goto(url, { waitUntil: "domcontentloaded", timeout: 12000 });
+    const desktopMetrics = await collectPageMetrics(desktopPage, url);
+    await desktopPage.close();
+    
+    // Mobile scan
+    const mobilePage = await browser.newPage({ viewport: { width: 375, height: 812 } });
+    await mobilePage.goto(url, { waitUntil: "domcontentloaded", timeout: 12000 });
+    const mobileMetrics = await collectPageMetrics(mobilePage, url);
+    await mobilePage.close();
+    
+    // Calculate mobile responsiveness score
+    const mobileResponsiveScore = (mobileMetrics.hasResponsiveDesign && desktopMetrics.linkCount < 50) ? 0.85 : 0.65;
+    
+    return { 
+      source: "playwright", 
+      ...desktopMetrics,
+      mobileResponsiveScore,
+      scannedAt: new Date().toISOString(),
+      dataQuality: "live"
+    };
+  } catch (error) {
+    throw new Error(`Playwright scan failed: ${error instanceof Error ? error.message : String(error)}`);
   } finally {
     await browser.close();
   }
@@ -203,17 +237,28 @@ export function getBrowserDiagnostics() {
 
 export async function scanUrlWithAutomation(url) {
   try {
-    return await scanWithPlaywright(url);
+    console.log(`[SCAN] Starting Playwright automation scan for: ${url}`);
+    const result = await scanWithPlaywright(url);
+    console.log(`[SCAN] Playwright scan completed successfully for: ${url}`);
+    return result;
   } catch (playwrightError) {
+    console.warn(`[SCAN] Playwright scan failed for ${url}:`, playwrightError instanceof Error ? playwrightError.message : String(playwrightError));
+    
     try {
-      return await scanWithPuppeteer(url);
+      console.log(`[SCAN] Attempting fallback with Puppeteer for: ${url}`);
+      const result = await scanWithPuppeteer(url);
+      console.log(`[SCAN] Puppeteer fallback completed successfully for: ${url}`);
+      return result;
     } catch (puppeteerError) {
+      console.warn(`[SCAN] Puppeteer fallback failed for ${url}:`, puppeteerError instanceof Error ? puppeteerError.message : String(puppeteerError));
+      console.log(`[SCAN] Using heuristic profile for: ${url}`);
       return {
         ...buildFallbackProfile(url),
         automationErrors: {
           playwright: toErrorMessage(playwrightError),
           puppeteer: toErrorMessage(puppeteerError),
         },
+        dataQuality: "heuristic",
       };
     }
   }
