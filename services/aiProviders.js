@@ -38,47 +38,66 @@ function extractContent(payload) {
 async function callGroq(messages) {
   if (!process.env.GROQ_API_KEY) return null;
 
-  const response = await fetchWithTimeout("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
-      messages,
-      temperature: 0.2,
-    }),
-  });
+  try {
+    const response = await fetchWithTimeout("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
+        messages,
+        temperature: 0.2,
+        max_tokens: 1024,
+      }),
+    });
 
-  if (!response.ok) return null;
-  return {
-    provider: "groq",
-    content: extractContent(await response.json()),
-  };
+    if (!response.ok) {
+      console.error(`[GROQ] HTTP ${response.status}`);
+      return null;
+    }
+    return {
+      provider: "groq",
+      content: extractContent(await response.json()),
+    };
+  } catch (error) {
+    console.error(`[GROQ] Error:`, error instanceof Error ? error.message : String(error));
+    return null;
+  }
+}
 }
 
 async function callNvidia(messages) {
   if (!process.env.NVIDIA_API_KEY) return null;
 
-  const response = await fetchWithTimeout("https://integrate.api.nvidia.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.NVIDIA_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: process.env.NVIDIA_MODEL || "nvidia/llama-3.1-nemotron-70b-instruct",
-      messages,
-      temperature: 0.2,
-    }),
-  });
+  try {
+    const response = await fetchWithTimeout("https://integrate.api.nvidia.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.NVIDIA_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: process.env.NVIDIA_MODEL || "nvidia/llama-3.1-nemotron-70b-instruct",
+        messages,
+        temperature: 0.2,
+        max_tokens: 1024,
+      }),
+    });
 
-  if (!response.ok) return null;
-  return {
-    provider: "nvidia",
-    content: extractContent(await response.json()),
-  };
+    if (!response.ok) {
+      console.error(`[NVIDIA] HTTP ${response.status}`);
+      return null;
+    }
+    return {
+      provider: "nvidia",
+      content: extractContent(await response.json()),
+    };
+  } catch (error) {
+    console.error(`[NVIDIA] Error:`, error instanceof Error ? error.message : String(error));
+    return null;
+  }
 }
 
 export function configuredProviders() {

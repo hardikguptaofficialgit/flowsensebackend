@@ -23,11 +23,7 @@ const AGENTS = [
   },
 ];
 
-function heuristicReply(agentId, message, availableProviders) {
-  const providerNames = Object.entries(availableProviders)
-    .filter(([, enabled]) => enabled)
-    .map(([name]) => name.toUpperCase());
-
+function heuristicReply(agentId, message) {
   const normalized = String(message || "").toLowerCase();
   if (agentId === "deploy-agent") {
     return [
@@ -36,9 +32,6 @@ function heuristicReply(agentId, message, availableProviders) {
       "2. Compare baseline URL vs new URL from Analyze -> Compare.",
       "3. Save each report to build trend history.",
       "4. Gate release when Critical issues appear.",
-      providerNames.length
-        ? `Active providers: ${providerNames.join(", ")}.`
-        : "No AI providers are configured, heuristic mode is active.",
     ].join("\n");
   }
 
@@ -50,7 +43,7 @@ function heuristicReply(agentId, message, availableProviders) {
     return "Interpretation guide: UX score above 80 is strong, 60-79 is moderate risk, below 60 needs immediate design iteration. Prioritize High and Critical friction points first.";
   }
 
-  return "FlowSense can analyze URLs, compare experiences, track history, and generate implementation-ready fixes. Ask about onboarding, reports, providers, or deployment workflow.";
+  return "FlowSense can analyze URLs, compare experiences, track history, and generate implementation-ready fixes. Ask about onboarding, reports, or how to get started.";
 }
 
 function systemPromptForAgent(agent) {
@@ -79,11 +72,8 @@ export async function chatWithAgent({ agentId, message }) {
 
       if (response?.content) {
         return {
-          provider,
           agentId: selectedAgent.id,
           answer: String(response.content).trim(),
-          attemptedProviders: chain,
-          fallbackUsed: false,
         };
       }
     } catch {
@@ -92,10 +82,7 @@ export async function chatWithAgent({ agentId, message }) {
   }
 
   return {
-    provider: "heuristic",
     agentId: selectedAgent.id,
-    answer: heuristicReply(selectedAgent.id, message, providers),
-    attemptedProviders: chain,
-    fallbackUsed: true,
+    answer: heuristicReply(selectedAgent.id, message),
   };
 }
