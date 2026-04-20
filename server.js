@@ -10,7 +10,7 @@ const PORT = Number(process.env.PORT || process.env.BACKEND_PORT) || 5000;
 function resolveAllowedOrigins() {
   const fromEnv = String(process.env.CORS_ALLOWED_ORIGINS || "")
     .split(",")
-    .map((item) => item.trim())
+    .map((item) => item.trim().replace(/\/$/, ""))
     .filter(Boolean);
 
   if (fromEnv.length) return new Set(fromEnv);
@@ -27,6 +27,8 @@ function resolveAllowedOrigins() {
   return new Set([
     "https://flow.linkitapp.in",
     "https://www.flow.linkitapp.in",
+    "https://flowsenseai.linkitapp.in",
+    "https://www.flowsenseai.linkitapp.in",
   ]);
 }
 
@@ -41,7 +43,9 @@ app.use(
         return;
       }
 
-      if (allowedOrigins.has(origin)) {
+      const normalizedOrigin = origin.replace(/\/$/, "");
+
+      if (allowedOrigins.has(normalizedOrigin)) {
         callback(null, true);
         return;
       }
